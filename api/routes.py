@@ -1,6 +1,9 @@
 """FastAPI route handlers."""
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from loguru import logger
 
 from config.settings import Settings
@@ -16,6 +19,7 @@ from .models.responses import ModelResponse, ModelsListResponse
 from .services import ClaudeProxyService
 
 router = APIRouter()
+PUBLIC_STATIC_DIR = Path(__file__).resolve().parent / "public_static"
 
 DISCOVERED_MODEL_CREATED_AT = "1970-01-01T00:00:00Z"
 
@@ -76,6 +80,18 @@ def get_proxy_service(
 def _probe_response(allow: str) -> Response:
     """Return an empty success response for compatibility probes."""
     return Response(status_code=204, headers={"Allow": allow})
+
+
+def _browser_prefers_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "").lower()
+    return "text/html" in accept and "application/json" not in accept
+
+
+def _public_asset_response(filename: str) -> FileResponse:
+    path = PUBLIC_STATIC_DIR / filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Public asset not found")
+    return FileResponse(path)
 
 
 def _discovered_model_response(model_id: str, *, display_name: str) -> ModelResponse:
@@ -197,14 +213,34 @@ async def probe_count_tokens(_auth=Depends(require_api_key)):
 
 @router.get("/")
 async def root(
-    settings: Settings = Depends(get_settings), _auth=Depends(require_api_key)
+    request: Request,
+    settings: Settings = Depends(get_settings),
 ):
-    """Root endpoint."""
+    """Root endpoint.
+
+    Browsers receive the public chat UI, while API clients keep the JSON response.
+    """
+    if _browser_prefers_html(request):
+        return _public_asset_response("index.html")
+
+    require_api_key(request, settings)
     return {
         "status": "ok",
         "provider": settings.provider_type,
         "model": settings.model,
     }
+
+
+@router.get("/chat", include_in_schema=False)
+async def chat_page():
+    return _public_asset_response("index.html")
+
+
+@router.get("/assets/{filename}", include_in_schema=False)
+async def public_asset(filename: str):
+    if filename not in {"site.css", "site.js"}:
+        raise HTTPException(status_code=404, detail="Public asset not found")
+    return _public_asset_response(filename)
 
 
 @router.api_route("/", methods=["HEAD", "OPTIONS"])

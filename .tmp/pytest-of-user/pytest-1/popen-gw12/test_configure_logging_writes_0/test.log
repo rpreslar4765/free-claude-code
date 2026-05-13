@@ -1,0 +1,1 @@
+{"time": "2026-05-11 15:06:42.736742-04:00", "level": "INFO", "message": "Test message for JSON", "module": "logging", "function": "callHandlers", "line": 1737}

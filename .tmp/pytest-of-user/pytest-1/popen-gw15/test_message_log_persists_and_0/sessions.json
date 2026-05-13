@@ -1,0 +1,20 @@
+{
+  "trees": {},
+  "node_to_tree": {},
+  "message_log": {
+    "telegram:c1": [
+      {
+        "message_id": "1",
+        "ts": "2026-05-11T19:06:43.335556+00:00",
+        "direction": "in",
+        "kind": "command"
+      },
+      {
+        "message_id": "2",
+        "ts": "2026-05-11T19:06:43.336354+00:00",
+        "direction": "out",
+        "kind": "command"
+      }
+    ]
+  }
+}

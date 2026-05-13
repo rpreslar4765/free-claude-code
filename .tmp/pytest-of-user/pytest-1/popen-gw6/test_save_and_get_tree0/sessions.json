@@ -1,0 +1,20 @@
+{
+  "trees": {
+    "r1": {
+      "root": "r1",
+      "nodes": {
+        "r1": {
+          "content": "root"
+        },
+        "n1": {
+          "content": "child"
+        }
+      }
+    }
+  },
+  "node_to_tree": {
+    "r1": "r1",
+    "n1": "r1"
+  },
+  "message_log": {}
+}

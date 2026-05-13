@@ -1,0 +1,1 @@
+{"time": "2026-05-11 15:06:42.794642-04:00", "level": "INFO", "message": "Calling https://api.telegram.org/bot<redacted>/getMe", "module": "test_logging_config", "function": "test_telegram_bot_token_redacted_in_message_field", "line": 68}

@@ -103,6 +103,10 @@ Admin UI: http://127.0.0.1:8082/admin
 
 Many terminals make these clickable. Use your configured `PORT` if it is not `8082`.
 
+Open `http://127.0.0.1:8082/` in a browser for the new device-friendly chat UI, or
+use `http://127.0.0.1:8082/chat` as the explicit shareable link from other devices on
+the same network.
+
 ### 6. Open The Admin UI And Configure NVIDIA NIM
 
 Open the **Admin UI** URL from the terminal output.

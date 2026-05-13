@@ -1,0 +1,1 @@
+{"time": "2026-05-11 15:06:42.823548-04:00", "level": "INFO", "message": "Request headers: Authorization: Bearer <redacted>", "module": "test_logging_config", "function": "test_bearer_substring_redacted_in_log_file", "line": 79}

@@ -1,0 +1,1 @@
+{"sessions": {"s1": {"session_id": "s1", "chat_id": 12345, "initial_msg_id": 100, "last_msg_id": 200, "platform": "telegram", "created_at": "2025-01-01T00:00:00+00:00", "updated_at": "2025-01-01T00:00:00+00:00"}}, "trees": {"r1": {"root_id": "r1", "nodes": {"r1": {}}}}, "node_to_tree": {"r1": "r1"}, "message_log": {}}
