@@ -64,6 +64,53 @@ def test_warn_if_process_auth_token_skips_explicit_dotenv_config():
     warning.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_runtime_startup_logs_admin_url_without_printed_server_banner(tmp_path):
+    import api.runtime as api_runtime_mod
+
+    settings = _app_settings(
+        messaging_platform="none",
+        telegram_bot_token=None,
+        allowed_telegram_user_id=None,
+        discord_bot_token=None,
+        allowed_discord_channels=None,
+        allowed_dir=str(tmp_path / "workspace"),
+        claude_workspace=str(tmp_path / "data"),
+        host="127.0.0.1",
+        port=9099,
+    )
+    runtime = api_runtime_mod.AppRuntime(
+        app=FastAPI(), settings=cast(Settings, settings)
+    )
+    uvicorn_logger = MagicMock()
+
+    with (
+        patch("builtins.print") as printed,
+        patch.object(
+            api_runtime_mod.logging, "getLogger", return_value=uvicorn_logger
+        ) as get_logger,
+        patch.object(api_runtime_mod.logger, "info") as app_info,
+        patch.object(ProviderRegistry, "validate_configured_models", new=AsyncMock()),
+        patch.object(ProviderRegistry, "start_model_list_refresh"),
+        patch.object(ProviderRegistry, "cleanup", new=AsyncMock()),
+        patch(
+            "messaging.platforms.factory.create_messaging_platform",
+            return_value=None,
+        ),
+    ):
+        await runtime.startup()
+        await runtime.shutdown()
+
+    printed.assert_not_called()
+    get_logger.assert_called_with("uvicorn.error")
+    uvicorn_logger.info.assert_called_once_with(
+        "Admin UI: %s (local-only)",
+        "http://127.0.0.1:9099/admin",
+    )
+    logged = " ".join(str(arg) for call in app_info.call_args_list for arg in call.args)
+    assert "Server URL:" not in logged
+
+
 def test_create_app_provider_error_handler_returns_anthropic_format():
     from api.app import create_app
     from providers.exceptions import AuthenticationError
@@ -85,7 +132,6 @@ def test_create_app_provider_error_handler_returns_anthropic_format():
         claude_workspace="./agent_workspace",
         host="127.0.0.1",
         port=8082,
-        log_file="server.log",
     )
     with (
         patch.object(api_app_mod, "get_settings", return_value=settings),
@@ -122,7 +168,6 @@ def test_create_app_provider_error_default_logs_exclude_provider_message():
         claude_workspace="./agent_workspace",
         host="127.0.0.1",
         port=8082,
-        log_file="server.log",
         log_api_error_tracebacks=False,
     )
     with (
@@ -160,7 +205,6 @@ def test_create_app_general_exception_handler_returns_500():
         claude_workspace="./agent_workspace",
         host="127.0.0.1",
         port=8082,
-        log_file="server.log",
     )
     with (
         patch.object(api_app_mod, "get_settings", return_value=settings),
@@ -197,7 +241,6 @@ def test_create_app_general_exception_default_logs_exclude_exception_message():
         claude_workspace="./agent_workspace",
         host="127.0.0.1",
         port=8082,
-        log_file="server.log",
         log_api_error_tracebacks=False,
     )
     with (
@@ -236,7 +279,6 @@ def test_app_lifespan_sets_state_and_cleans_up(tmp_path, messaging_enabled):
         claude_workspace=str(tmp_path / "data"),
         host="127.0.0.1",
         port=8082,
-        log_file=str(tmp_path / "server.log"),
     )
 
     fake_platform = MagicMock()
@@ -315,7 +357,6 @@ def test_app_lifespan_cleanup_continues_if_platform_stop_raises(tmp_path):
         claude_workspace=str(tmp_path / "data"),
         host="127.0.0.1",
         port=8082,
-        log_file=str(tmp_path / "server.log"),
     )
 
     fake_platform = MagicMock()
@@ -366,7 +407,6 @@ async def test_runtime_startup_validation_failure_does_not_block_server(tmp_path
         claude_workspace=str(tmp_path / "data"),
         host="127.0.0.1",
         port=8082,
-        log_file=str(tmp_path / "server.log"),
     )
     app = FastAPI()
     runtime = api_runtime_mod.AppRuntime(
@@ -414,7 +454,6 @@ async def test_graceful_asgi_lifespan_model_validation_failure_starts(tmp_path):
         claude_workspace=str(tmp_path / "data"),
         host="127.0.0.1",
         port=8082,
-        log_file=str(tmp_path / "server.log"),
     )
     app = api_app_mod.GracefulLifespanApp(FastAPI())
     sent: list[MutableMapping[str, Any]] = []
@@ -460,7 +499,6 @@ def test_app_lifespan_messaging_import_error_no_crash(tmp_path, caplog):
         claude_workspace=str(tmp_path / "data"),
         host="127.0.0.1",
         port=8082,
-        log_file=str(tmp_path / "server.log"),
     )
 
     api_app_mod = importlib.import_module("api.app")
@@ -496,7 +534,6 @@ def test_app_lifespan_platform_start_exception_cleanup_still_runs(tmp_path):
         claude_workspace=str(tmp_path / "data"),
         host="127.0.0.1",
         port=8082,
-        log_file=str(tmp_path / "server.log"),
     )
 
     fake_platform = MagicMock()
@@ -547,7 +584,6 @@ def test_app_lifespan_flush_pending_save_exception_warning_only(tmp_path):
         claude_workspace=str(tmp_path / "data"),
         host="127.0.0.1",
         port=8082,
-        log_file=str(tmp_path / "server.log"),
     )
 
     fake_platform = MagicMock()
@@ -582,3 +618,29 @@ def test_app_lifespan_flush_pending_save_exception_warning_only(tmp_path):
 
     session_store.flush_pending_save.assert_called_once()
     registry_cleanup.assert_awaited_once()
+
+
+def test_create_app_writes_server_log_under_fcc_home(monkeypatch, tmp_path):
+    """App logging uses ~/.fcc/logs/server.log regardless of cwd."""
+    from loguru import logger
+
+    import config.logging_config as logging_config_mod
+    from api.app import create_app
+    from config.paths import server_log_path
+
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    monkeypatch.chdir(run_dir)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.setattr(logging_config_mod, "_configured", False)
+
+    create_app(lifespan_enabled=False)
+    logger.info("canonical log path test")
+    logger.complete()
+
+    canonical_log = server_log_path()
+    assert canonical_log == tmp_path / ".fcc" / "logs" / "server.log"
+    assert canonical_log.is_file()
+    assert "canonical log path test" in canonical_log.read_text(encoding="utf-8")
+    assert not (run_dir / "logs" / "server.log").exists()

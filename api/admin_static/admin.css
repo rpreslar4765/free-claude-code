@@ -78,7 +78,6 @@ textarea {
 .brand h1,
 .brand p,
 .topbar h2,
-.topbar p,
 .section-heading h3,
 .section-heading p,
 .strip-header h3 {
@@ -91,7 +90,6 @@ textarea {
 }
 
 .brand p,
-.eyebrow,
 .section-heading p,
 .action-meta span {
   color: var(--muted);
@@ -100,7 +98,7 @@ textarea {
 
 .section-nav {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .nav-link {
@@ -108,14 +106,15 @@ textarea {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  min-height: 36px;
+  min-height: 42px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: var(--text);
-  padding: 8px 10px;
+  padding: 10px 12px;
   text-align: left;
   cursor: pointer;
+  font-weight: 700;
 }
 
 .nav-link:hover,
@@ -124,23 +123,18 @@ textarea {
   border-color: var(--line);
 }
 
+.nav-link.active {
+  border-color: rgba(89, 217, 148, 0.34);
+  color: #ffffff;
+}
+
 .main {
   min-width: 0;
   padding: 28px;
 }
 
 .topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
   margin-bottom: 20px;
-}
-
-.eyebrow {
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  font-weight: 700;
 }
 
 .topbar h2 {
@@ -148,15 +142,7 @@ textarea {
   line-height: 1.15;
 }
 
-.server-state {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.status-pill,
-.model-badge {
+.status-pill {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
@@ -188,9 +174,18 @@ textarea {
   border-color: rgba(255, 116, 108, 0.36);
 }
 
+.admin-views,
+.admin-view {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-view[hidden] {
+  display: none;
+}
+
 .provider-strip,
-.settings-section,
-.env-panel {
+.settings-section {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -198,7 +193,6 @@ textarea {
 }
 
 .provider-strip {
-  margin-bottom: 18px;
   padding: 16px;
 }
 
@@ -378,24 +372,6 @@ textarea {
   margin-top: 14px;
 }
 
-.env-panel {
-  margin-top: 18px;
-  padding: 18px;
-}
-
-.env-preview {
-  overflow: auto;
-  max-height: 360px;
-  margin: 14px 0 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #0b0f0d;
-  color: #c9f4dc;
-  padding: 14px;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .action-bar {
   position: fixed;
   right: 0;
@@ -464,15 +440,6 @@ textarea {
 
   .main {
     padding: 18px;
-  }
-
-  .topbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .server-state {
-    justify-content: flex-start;
   }
 
   .action-bar {

@@ -14,13 +14,11 @@ def _launcher_settings(
     *,
     port: int = 8082,
     token: str = "freecc",
-    claude_bin: str = "claude-test",
 ) -> Settings:
     return Settings.model_construct(
         host="0.0.0.0",
         port=port,
         anthropic_auth_token=token,
-        claude_cli_bin=claude_bin,
     )
 
 
@@ -28,7 +26,7 @@ def _run_init(tmp_home: Path) -> tuple[str, Path]:
     """Run init() with home directory redirected to tmp_home. Returns (printed output, env_file path)."""
     from cli.entrypoints import init
 
-    env_file = tmp_home / ".config" / "free-claude-code" / ".env"
+    env_file = tmp_home / ".fcc" / ".env"
     printed: list[str] = []
 
     with (
@@ -62,6 +60,50 @@ def test_init_copies_template_content(tmp_path: Path) -> None:
     assert env_file.read_text("utf-8") == template
 
 
+def test_init_migrates_home_checkout_env_before_template(tmp_path: Path) -> None:
+    """init() preserves users who kept config in ~/free-claude-code/.env."""
+    legacy_env = tmp_path / "free-claude-code" / ".env"
+    legacy_env.parent.mkdir(parents=True)
+    legacy_env.write_text("MODEL=deepseek/deepseek-chat\n", encoding="utf-8")
+
+    output, env_file = _run_init(tmp_path)
+
+    assert env_file.read_text("utf-8") == "MODEL=deepseek/deepseek-chat\n"
+    assert f"Config migrated from {legacy_env}" in output
+
+
+def test_init_migrates_legacy_xdg_env_before_template(tmp_path: Path) -> None:
+    """init() preserves users who kept config in ~/.config/free-claude-code/.env."""
+    legacy_env = tmp_path / ".config" / "free-claude-code" / ".env"
+    legacy_env.parent.mkdir(parents=True)
+    legacy_env.write_text("MODEL=open_router/free-model\n", encoding="utf-8")
+
+    output, env_file = _run_init(tmp_path)
+
+    assert env_file.read_text("utf-8") == "MODEL=open_router/free-model\n"
+    assert f"Config migrated from {legacy_env}" in output
+
+
+def test_legacy_env_migration_does_not_overwrite_managed_env(
+    tmp_path: Path,
+) -> None:
+    """Legacy migration never overwrites an existing ~/.fcc/.env."""
+    from cli.entrypoints import _migrate_legacy_env_if_missing
+
+    managed_env = tmp_path / ".fcc" / ".env"
+    managed_env.parent.mkdir(parents=True)
+    managed_env.write_text("MODEL=nvidia_nim/current\n", encoding="utf-8")
+    legacy_env = tmp_path / "free-claude-code" / ".env"
+    legacy_env.parent.mkdir(parents=True)
+    legacy_env.write_text("MODEL=deepseek/legacy\n", encoding="utf-8")
+
+    with patch("pathlib.Path.home", return_value=tmp_path):
+        migrated_from = _migrate_legacy_env_if_missing()
+
+    assert migrated_from is None
+    assert managed_env.read_text("utf-8") == "MODEL=nvidia_nim/current\n"
+
+
 def test_env_template_loader_uses_root_template_in_source_checkout() -> None:
     """Source checkout fallback uses the root .env.example as the single source."""
     from cli.entrypoints import _load_env_template
@@ -74,8 +116,8 @@ def test_env_template_loader_uses_root_template_in_source_checkout() -> None:
 
 
 def test_init_creates_parent_directories(tmp_path: Path) -> None:
-    """init() creates ~/.config/free-claude-code/ even if it doesn't exist."""
-    config_dir = tmp_path / ".config" / "free-claude-code"
+    """init() creates ~/.fcc/ even if it doesn't exist."""
+    config_dir = tmp_path / ".fcc"
     assert not config_dir.exists()
 
     _run_init(tmp_path)
@@ -88,7 +130,7 @@ def test_init_skips_if_env_already_exists(tmp_path: Path) -> None:
     # Create it first
     _run_init(tmp_path)
 
-    env_file = tmp_path / ".config" / "free-claude-code" / ".env"
+    env_file = tmp_path / ".fcc" / ".env"
     env_file.write_text("existing content", encoding="utf-8")
 
     output, _ = _run_init(tmp_path)
@@ -117,6 +159,54 @@ def test_cli_scripts_are_registered() -> None:
     assert scripts["fcc-claude"] == "cli.entrypoints:launch_claude"
 
 
+def test_schedule_open_admin_browser_opens_when_health_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Opening /admin runs after /health preflight succeeds."""
+    monkeypatch.delenv("FCC_OPEN_BROWSER", raising=False)
+    from api.admin_urls import local_admin_url
+    from cli import entrypoints
+
+    settings = _launcher_settings(port=31337)
+    opened_urls: list[str] = []
+
+    class ImmediateThread:
+        def __init__(self, target=None, **_kwargs: object) -> None:
+            self._target = target
+
+        def start(self) -> None:
+            assert self._target is not None
+            self._target()
+
+    with (
+        patch.object(entrypoints.threading, "Thread", ImmediateThread),
+        patch.object(entrypoints, "_preflight_proxy", return_value=None),
+        patch.object(
+            entrypoints.webbrowser,
+            "open",
+            side_effect=lambda url: opened_urls.append(url),
+        ),
+        patch.object(entrypoints.time, "sleep"),
+    ):
+        entrypoints._schedule_open_admin_browser(settings)
+
+    assert opened_urls == [local_admin_url(settings)]
+
+
+def test_schedule_open_admin_browser_skips_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FCC_OPEN_BROWSER", "0")
+    from cli import entrypoints
+
+    settings = _launcher_settings()
+
+    with patch.object(entrypoints.threading, "Thread") as thread_cls:
+        entrypoints._schedule_open_admin_browser(settings)
+
+    thread_cls.assert_not_called()
+
+
 def test_serve_supervisor_restarts_when_app_requests_restart() -> None:
     from cli import entrypoints
 
@@ -143,6 +233,7 @@ def test_serve_supervisor_restarts_when_app_requests_restart() -> None:
         patch.object(entrypoints, "get_settings", get_settings),
         patch.object(entrypoints.uvicorn, "Config", side_effect=fake_config),
         patch.object(entrypoints.uvicorn, "Server", side_effect=FakeServer),
+        patch.object(entrypoints, "_schedule_open_admin_browser"),
         patch.object(entrypoints, "kill_all_best_effort") as kill_all,
     ):
         entrypoints.serve()
@@ -150,6 +241,30 @@ def test_serve_supervisor_restarts_when_app_requests_restart() -> None:
     assert len(servers) == 2
     get_settings.cache_clear.assert_called_once()
     kill_all.assert_called_once()
+
+
+def test_serve_migrates_legacy_env_before_loading_settings(tmp_path: Path) -> None:
+    from cli import entrypoints
+
+    legacy_env = tmp_path / "free-claude-code" / ".env"
+    legacy_env.parent.mkdir(parents=True)
+    legacy_env.write_text("MODEL=deepseek/deepseek-chat\n", encoding="utf-8")
+    settings = _launcher_settings()
+    get_settings = MagicMock(return_value=settings)
+    get_settings.cache_clear = MagicMock()
+
+    with (
+        patch("pathlib.Path.home", return_value=tmp_path),
+        patch.object(entrypoints, "get_settings", get_settings),
+        patch.object(entrypoints, "_run_supervised_server", return_value=False),
+        patch.object(entrypoints, "kill_all_best_effort"),
+    ):
+        entrypoints.serve()
+
+    assert (tmp_path / ".fcc" / ".env").read_text("utf-8") == (
+        "MODEL=deepseek/deepseek-chat\n"
+    )
+    get_settings.assert_called_once_with()
 
 
 def test_serve_handles_keyboard_interrupt_without_traceback() -> None:
@@ -191,6 +306,7 @@ def test_claude_child_env_targets_current_proxy_config() -> None:
     assert env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:9090"
     assert env["ANTHROPIC_AUTH_TOKEN"] == "proxy-token"
     assert env["CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY"] == "1"
+    assert env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "190000"
     assert "ANTHROPIC_API_KEY" not in env
 
 
@@ -240,6 +356,7 @@ def test_launch_claude_passes_args_and_child_env(
     assert child_env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:9191"
     assert child_env["ANTHROPIC_AUTH_TOKEN"] == "proxy-token"
     assert child_env["CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY"] == "1"
+    assert child_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "190000"
     assert child_env["KEEP_ME"] == "yes"
     register_pid.assert_called_once_with(12345)
     unregister_pid.assert_called_once_with(12345)
@@ -275,7 +392,7 @@ def test_launch_claude_exits_when_command_cannot_be_resolved(
 ) -> None:
     from cli.entrypoints import launch_claude
 
-    settings = _launcher_settings(claude_bin="claude-missing")
+    settings = _launcher_settings()
     with (
         patch("cli.entrypoints.get_settings", return_value=settings),
         patch("cli.entrypoints._preflight_proxy", return_value=None),
@@ -288,7 +405,7 @@ def test_launch_claude_exits_when_command_cannot_be_resolved(
     assert exc_info.value.code == 127
     popen.assert_not_called()
     captured = capsys.readouterr()
-    assert "Could not find Claude Code command: claude-missing" in captured.err
+    assert "Could not find Claude Code command: claude" in captured.err
     assert "npm install -g @anthropic-ai/claude-code" in captured.err
 
 

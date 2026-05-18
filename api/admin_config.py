@@ -12,6 +12,7 @@ from typing import Any, Literal
 from dotenv import dotenv_values
 from pydantic import ValidationError
 
+from config.paths import managed_env_path
 from config.provider_catalog import PROVIDER_CATALOG
 from config.settings import Settings
 
@@ -34,7 +35,6 @@ SourceType = Literal[
 ]
 
 MASKED_SECRET = "********"
-MANAGED_ENV_RELATIVE = Path(".config") / "free-claude-code" / ".env"
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,6 +159,24 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         secret=True,
     ),
     ConfigFieldSpec(
+        "OPENCODE_API_KEY",
+        "OpenCode Zen API Key",
+        "providers",
+        "secret",
+        settings_attr="opencode_api_key",
+        secret=True,
+        description="OpenCode Zen curated model gateway at opencode.ai.",
+    ),
+    ConfigFieldSpec(
+        "ZAI_API_KEY",
+        "Z.ai API Key",
+        "providers",
+        "secret",
+        settings_attr="zai_api_key",
+        secret=True,
+        description="Z.ai Coding Plan API key.",
+    ),
+    ConfigFieldSpec(
         "LM_STUDIO_BASE_URL",
         "LM Studio Base URL",
         "providers",
@@ -230,6 +248,24 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         "providers",
         "secret",
         settings_attr="wafer_proxy",
+        secret=True,
+        advanced=True,
+    ),
+    ConfigFieldSpec(
+        "OPENCODE_PROXY",
+        "OpenCode Zen Proxy",
+        "providers",
+        "secret",
+        settings_attr="opencode_proxy",
+        secret=True,
+        advanced=True,
+    ),
+    ConfigFieldSpec(
+        "ZAI_PROXY",
+        "Z.ai Proxy",
+        "providers",
+        "secret",
+        settings_attr="zai_proxy",
         secret=True,
         advanced=True,
     ),
@@ -370,14 +406,6 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         restart_required=True,
     ),
     ConfigFieldSpec(
-        "LOG_FILE",
-        "Log File",
-        "runtime",
-        settings_attr="log_file",
-        default="server.log",
-        restart_required=True,
-    ),
-    ConfigFieldSpec(
         "MESSAGING_PLATFORM",
         "Messaging Platform",
         "messaging",
@@ -438,26 +466,10 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         session_sensitive=True,
     ),
     ConfigFieldSpec(
-        "CLAUDE_WORKSPACE",
-        "Claude Workspace",
-        "messaging",
-        settings_attr="claude_workspace",
-        default="./agent_workspace",
-        session_sensitive=True,
-    ),
-    ConfigFieldSpec(
         "ALLOWED_DIR",
         "Allowed Directory",
         "messaging",
         settings_attr="allowed_dir",
-        session_sensitive=True,
-    ),
-    ConfigFieldSpec(
-        "CLAUDE_CLI_BIN",
-        "Claude CLI Binary",
-        "messaging",
-        settings_attr="claude_cli_bin",
-        default="claude",
         session_sensitive=True,
     ),
     ConfigFieldSpec(
@@ -694,6 +706,18 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         advanced=True,
     ),
     ConfigFieldSpec(
+        "FCC_SMOKE_MODEL_OPENCODE",
+        "Smoke OpenCode Zen Model",
+        "smoke",
+        advanced=True,
+    ),
+    ConfigFieldSpec(
+        "FCC_SMOKE_MODEL_ZAI",
+        "Smoke Z.ai Model",
+        "smoke",
+        advanced=True,
+    ),
+    ConfigFieldSpec(
         "FCC_SMOKE_NIM_MODELS",
         "Smoke NIM Models",
         "smoke",
@@ -720,12 +744,6 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
 )
 
 FIELD_BY_KEY = {field.key: field for field in FIELDS}
-
-
-def managed_env_path() -> Path:
-    """Return the admin-managed user config path."""
-
-    return Path.home() / MANAGED_ENV_RELATIVE
 
 
 def repo_env_path() -> Path:

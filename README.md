@@ -14,7 +14,7 @@ Use Claude Code CLI, VS Code, JetBrains ACP, or chat bots through your own Anthr
 
 Free Claude Code routes Anthropic Messages API traffic from Claude Code to NVIDIA NIM, Kimi, Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, or Ollama. It keeps Claude Code's client-side protocol stable while letting you choose free, paid, or local models.
 
-[Quick Start](#quick-start) · [Providers](#choose-a-provider) · [Clients](#connect-claude-code) · [Configuration](#configuration-reference) · [Development](#development)
+[Quick Start](#quick-start) · [Providers](#choose-a-provider) · [Clients](#connect-claude-code) · [Integrations](#optional-integrations) · [Development](#development)
 
 </div>
 
@@ -37,7 +37,7 @@ Free Claude Code routes Anthropic Messages API traffic from Claude Code to NVIDI
 ## What You Get
 
 - Drop-in proxy for Claude Code's Anthropic API calls.
-- Eight provider backends: NVIDIA NIM, Kimi, Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, and Ollama.
+- Ten provider backends: NVIDIA NIM, Kimi, Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, Ollama, OpenCode Zen, and Z.ai.
 - Per-model routing: send Opus, Sonnet, Haiku, and fallback traffic to different providers.
 - Native Claude Code `/model` picker support through the proxy's `/v1/models` endpoint (Claude Code must opt in to Gateway model discovery; see [Model Picker](#model-picker)).
 - Streaming, tool use, reasoning/thinking block handling, and local request optimizations.
@@ -94,11 +94,10 @@ Use the same command to update to the latest version.
 fcc-server
 ```
 
-After startup, the terminal prints the proxy and admin URLs:
+After startup, Uvicorn prints the proxy bind address and the app logs the admin URL:
 
 ```text
-Server URL: http://127.0.0.1:8082
-Admin UI: http://127.0.0.1:8082/admin
+INFO:     Admin UI: http://127.0.0.1:8082/admin (local-only)
 ```
 
 Many terminals make these clickable. Use your configured `PORT` if it is not `8082`.
@@ -125,7 +124,7 @@ The default model is already set to `nvidia_nim/z-ai/glm4.7`. You can change it 
 fcc-claude
 ```
 
-`fcc-claude` reads the current configured port and auth token each time it starts, sets the Claude Code environment variables, and then launches the real `claude` command.
+`fcc-claude` reads the current configured port and auth token each time it starts, sets the Claude Code environment variables (including a 190k-token `CLAUDE_CODE_AUTO_COMPACT_WINDOW` for auto-compaction), and then launches the real `claude` command.
 
 ## Choose A Provider
 
@@ -212,11 +211,45 @@ In the Admin UI, keep or update `OLLAMA_BASE_URL`, then set `MODEL` to the same 
 
 `OLLAMA_BASE_URL` is the Ollama server root; do not append `/v1`. Example model slugs include `ollama/llama3.1` and `ollama/llama3.1:8b`.
 
-### 9. Mix Providers By Model Tier
+### 9. [OpenCode Zen](https://opencode.ai/)
+
+Get an API key at [opencode.ai/auth](https://opencode.ai/auth).
+
+In the Admin UI, paste it into `OPENCODE_API_KEY`, then set `MODEL` to an OpenCode Zen model slug such as `opencode/gpt-5.3-codex`.
+
+OpenCode Zen is a curated model gateway that provides access to models from Anthropic, OpenAI, Google, DeepSeek, and more through a single API key and OpenAI-compatible endpoint at `https://opencode.ai/zen/v1`.
+
+Popular examples:
+
+- `opencode/gpt-5.3-codex`
+- `opencode/claude-sonnet-4`
+- `opencode/deepseek-v4-flash-free` (free)
+- `opencode/gemini-3-flash`
+- `opencode/big-pickle` (free)
+- `opencode/glm-5.1`
+
+Browse available models at [opencode.ai](https://opencode.ai).
+
+### 10. [Z.ai](https://z.ai/)
+
+Get an API key at [Z.ai/manage-apikey/apikey-list](https://z.ai/manage-apikey/apikey-list).
+
+In the Admin UI, paste it into `ZAI_API_KEY`, then set `MODEL` to a Z.ai model slug such as `zai/glm-5.1`.
+
+Z.ai provides GLM models through the OpenAI-compatible Coding Plan endpoint at `https://api.z.ai/api/coding/paas/v4`.
+
+Popular examples:
+
+- `zai/glm-5.1`
+- `zai/glm-5-turbo`
+
+Browse models at [Z.ai](https://z.ai).
+
+### 11. Mix Providers By Model Tier
 
 Each model tier can use a different provider by setting `MODEL_OPUS`, `MODEL_SONNET`, and `MODEL_HAIKU` in the Admin UI. Leave a tier blank to inherit `MODEL`.
 
-For example, you can route Opus to `nvidia_nim/moonshotai/kimi-k2.5`, Sonnet to `open_router/deepseek/deepseek-r1-0528:free`, Haiku to `lmstudio/unsloth/GLM-4.7-Flash-GGUF`, and keep the fallback `MODEL` on `wafer/DeepSeek-V4-Pro`.
+For example, you can route Opus to `nvidia_nim/moonshotai/kimi-k2.5`, Sonnet to `open_router/deepseek/deepseek-r1-0528:free`, Haiku to `lmstudio/unsloth/GLM-4.7-Flash-GGUF`, and keep the fallback `MODEL` on `zai/glm-5.1`.
 
 ## Connect Claude Code
 
@@ -228,7 +261,7 @@ For terminal use, prefer the installed launcher:
 fcc-claude
 ```
 
-Keep `fcc-server` running while you work. The Admin UI manages proxy config, restarts the server when runtime settings change, and `fcc-claude` reads the current Admin UI-managed port and auth token every time it starts.
+Keep `fcc-server` running while you work. The Admin UI manages proxy config, restarts the server when runtime settings change, and `fcc-claude` reads the current Admin UI-managed port and auth token every time it starts. It also sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW` to `190000` for auto-compaction.
 
 ### 2. VS Code Extension
 
@@ -238,7 +271,8 @@ Open Settings, search for `claude-code.environmentVariables`, choose **Edit in s
 "claudeCode.environmentVariables": [
   { "name": "ANTHROPIC_BASE_URL", "value": "http://localhost:8082" },
   { "name": "ANTHROPIC_AUTH_TOKEN", "value": "freecc" },
-  { "name": "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY", "value": "1" }
+  { "name": "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY", "value": "1" },
+  { "name": "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "value": "190000" }
 ]
 ```
 
@@ -257,7 +291,8 @@ Set the environment for `acp.registry.claude-acp`:
 "env": {
   "ANTHROPIC_BASE_URL": "http://localhost:8082",
   "ANTHROPIC_AUTH_TOKEN": "freecc",
-  "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1"
+  "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+  "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "190000"
 }
 ```
 
@@ -271,35 +306,40 @@ Restart the IDE after changing the file.
 
 ## Optional Integrations
 
+For every integration below, change **managed proxy settings** only in the **Admin UI** at `/admin`: edit fields, click **Validate**, then **Apply**. The footer shows where the managed config is stored; this README does not walk through editing that file by hand.
+
 ### 1. Discord And Telegram Bots
 
 The bot wrapper runs Claude Code sessions remotely, streams progress, supports reply-based conversation branches, and can stop or clear tasks.
 
-Discord minimum config:
+**Discord**
 
-```dotenv
-MESSAGING_PLATFORM="discord"
-DISCORD_BOT_TOKEN="your-discord-bot-token"
-ALLOWED_DISCORD_CHANNELS="123456789"
-CLAUDE_WORKSPACE="./agent_workspace"
-ALLOWED_DIR="C:/Users/yourname/projects"
-```
+1. Create the bot in the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Enable **Message Content Intent**.
+3. Invite the bot with read, send, and message history permissions.
+4. Copy the bot token and the numeric channel ID (or IDs) where the bot should respond.
 
-Create the bot in the [Discord Developer Portal](https://discord.com/developers/applications), enable Message Content Intent, and invite it with read/send/history permissions.
+**Telegram**
 
-Telegram minimum config:
+1. Create a bot with [@BotFather](https://t.me/BotFather) and copy the bot token.
+2. Get your numeric user ID from [@userinfobot](https://t.me/userinfobot) so only you can use the bot.
 
-```dotenv
-MESSAGING_PLATFORM="telegram"
-TELEGRAM_BOT_TOKEN="123456789:ABC..."
-ALLOWED_TELEGRAM_USER_ID="your-user-id"
-CLAUDE_WORKSPACE="./agent_workspace"
-ALLOWED_DIR="C:/Users/yourname/projects"
-```
+**Configure in the Admin UI**
 
-Get a token from [@BotFather](https://t.me/BotFather) and your user ID from [@userinfobot](https://t.me/userinfobot).
+1. With `fcc-server` running, open the **Admin UI** URL from the terminal output.
+2. In the sidebar, choose **Messaging**.
+3. Set **Messaging Platform** to **discord** or **telegram**.
+4. For Discord, paste **Discord Bot Token** and **Allowed Discord Channels**. For Telegram, paste **Telegram Bot Token** and **Allowed Telegram User ID**.
+5. Set **Allowed Directory** to an absolute path on the machine running the proxy—the workspace root the bot may use.
+6. Click **Validate**, then **Apply**. Restart the server if the UI says one is required.
 
-Useful commands:
+<div align="center">
+  <img src="assets/admin-messaging.png" alt="Admin UI Messaging view with bot and voice settings" width="700">
+</div>
+
+<p align="center"><em>Admin UI → Messaging (platform, bots, and Voice)</em></p>
+
+**Useful commands**
 
 - `/stop` cancels a task; reply to a task message to stop only that branch.
 - `/clear` resets sessions; reply to clear one branch.
@@ -307,7 +347,7 @@ Useful commands:
 
 ### 2. Voice Notes
 
-Voice notes work on Discord and Telegram. Choose one backend:
+Voice notes work on Discord and Telegram after you install the matching optional dependencies:
 
 ```bash
 uv sync --extra voice_local
@@ -315,112 +355,7 @@ uv sync --extra voice
 uv sync --extra voice --extra voice_local
 ```
 
-```dotenv
-VOICE_NOTE_ENABLED=true
-WHISPER_DEVICE="cpu"          # cpu | cuda | nvidia_nim
-WHISPER_MODEL="base"
-HF_TOKEN=""
-```
-
-Use `WHISPER_DEVICE="nvidia_nim"` with the `voice` extra and `NVIDIA_NIM_API_KEY` for NVIDIA-hosted transcription.
-
-## Configuration Reference
-
-[`.env.example`](.env.example) is the canonical list of variables. The sections below are the ones most users change.
-
-### 1. Manual `.env` Setup (Headless)
-
-Use this only if you prefer file-based config or are running headless. The Admin UI is easier for first setup.
-
-```bash
-cp .env.example .env
-```
-
-Example for NVIDIA NIM:
-
-```dotenv
-NVIDIA_NIM_API_KEY="nvapi-your-key"
-MODEL="nvidia_nim/z-ai/glm4.7"
-ANTHROPIC_AUTH_TOKEN="freecc"
-```
-
-Config precedence is repo `.env`, then `~/.config/free-claude-code/.env`, then `FCC_ENV_FILE` when set. `ANTHROPIC_AUTH_TOKEN` can be any local secret; pass the same value to Claude Code.
-
-### 2. Model Routing
-
-```dotenv
-MODEL="nvidia_nim/z-ai/glm4.7"
-MODEL_OPUS=
-MODEL_SONNET=
-MODEL_HAIKU=
-ENABLE_MODEL_THINKING=true
-ENABLE_OPUS_THINKING=
-ENABLE_SONNET_THINKING=
-ENABLE_HAIKU_THINKING=
-```
-
-Blank per-tier values inherit the fallback. Blank thinking overrides inherit `ENABLE_MODEL_THINKING`.
-
-### 3. Provider Keys And URLs
-
-```dotenv
-NVIDIA_NIM_API_KEY=""
-OPENROUTER_API_KEY=""
-DEEPSEEK_API_KEY=""
-WAFER_API_KEY=""
-LM_STUDIO_BASE_URL="http://localhost:1234/v1"
-LLAMACPP_BASE_URL="http://localhost:8080/v1"
-OLLAMA_BASE_URL="http://localhost:11434"
-```
-
-Proxy settings are per provider:
-
-```dotenv
-NVIDIA_NIM_PROXY=""
-OPENROUTER_PROXY=""
-LMSTUDIO_PROXY=""
-LLAMACPP_PROXY=""
-WAFER_PROXY=""
-```
-
-### 4. Rate Limits And Timeouts
-
-```dotenv
-PROVIDER_RATE_LIMIT=1
-PROVIDER_RATE_WINDOW=3
-PROVIDER_MAX_CONCURRENCY=5
-HTTP_READ_TIMEOUT=120
-HTTP_WRITE_TIMEOUT=10
-HTTP_CONNECT_TIMEOUT=10
-```
-
-Use lower limits for free hosted providers; local providers can usually tolerate higher concurrency if the machine can handle it.
-
-### 5. Security And Diagnostics
-
-```dotenv
-ANTHROPIC_AUTH_TOKEN=
-LOG_RAW_API_PAYLOADS=false
-LOG_RAW_SSE_EVENTS=false
-LOG_API_ERROR_TRACEBACKS=false
-LOG_RAW_MESSAGING_CONTENT=false
-LOG_RAW_CLI_DIAGNOSTICS=false
-LOG_MESSAGING_ERROR_DETAILS=false
-```
-
-Raw logging flags can expose prompts, tool arguments, paths, and model output. Keep them off unless you are debugging locally.
-
-Structured TRACE rows append fields such as `"trace": true`, `stage`, `event`, and `source` and include conversation context needed to follow Claude Code flows end-to-end. Dictionary keys resembling credentials (for example `api_key` / `authorization` values nested in structured payloads) are redacted; arbitrary prose you type into prompts may still appear verbatim.
-
-### 6. Local Web Tools
-
-```dotenv
-ENABLE_WEB_SERVER_TOOLS=true
-WEB_FETCH_ALLOWED_SCHEMES=http,https
-WEB_FETCH_ALLOW_PRIVATE_NETWORKS=false
-```
-
-These tools perform outbound HTTP from the proxy. Keep private-network access disabled unless you are in a controlled lab environment.
+In the **Admin UI**, open **Messaging** and scroll to **Voice**. Turn on **Voice Notes**, choose **Whisper Device** (`cpu`, `cuda`, or `nvidia_nim`), set **Whisper Model**, and enter **Hugging Face Token** when your setup needs it. For **nvidia_nim** transcription, install the `voice` extra and set **NVIDIA NIM API Key** on the **Providers** view. The screenshot above shows the **Voice** block in the same view.
 
 ## How It Works
 
@@ -434,7 +369,7 @@ Important pieces:
 
 - FastAPI exposes Anthropic-compatible routes such as `/v1/messages`, `/v1/messages/count_tokens`, and `/v1/models`.
 - Model routing resolves the Claude model name to `MODEL_OPUS`, `MODEL_SONNET`, `MODEL_HAIKU`, or `MODEL`.
-- NIM uses OpenAI chat streaming translated into Anthropic SSE.
+- NIM, OpenCode Zen, Z.ai use OpenAI chat streaming translated into Anthropic SSE.
 - Wafer, OpenRouter, DeepSeek, LM Studio, llama.cpp, and Ollama use Anthropic Messages style transports.
 - The proxy normalizes thinking blocks, tool calls, token usage metadata, and provider errors into the shape Claude Code expects.
 - Request optimizations answer trivial Claude Code probes locally to save latency and quota.
@@ -481,8 +416,8 @@ Run them in that order before pushing. CI enforces the same checks.
 `pyproject.toml` installs:
 
 - `fcc-server`: starts the proxy with configured host and port.
-- `fcc-init`: optional file-based config scaffold at `~/.config/free-claude-code/.env`.
-- `fcc-claude`: launches Claude Code with the configured local proxy URL, auth token, and model discovery flag.
+- `fcc-init`: optional advanced scaffold for `~/.fcc/.env`; prefer the **Admin UI** for normal configuration.
+- `fcc-claude`: launches Claude Code with the configured local proxy URL, auth token, model discovery flag, and a 190k `CLAUDE_CODE_AUTO_COMPACT_WINDOW` for auto-compaction.
 - `free-claude-code`: compatibility alias for `fcc-server`.
 
 ### 5. Extending
@@ -494,6 +429,7 @@ Run them in that order before pushing. CI enforces the same checks.
 
 ## Contributing
 
+- [`.env.example`](.env.example) lists env key names as a read-only reference for contributors; use the **Admin UI** to change managed proxy settings.
 - Report bugs and feature requests in [Issues](https://github.com/Alishahryar1/free-claude-code/issues).
 - Keep changes small and covered by focused tests.
 - Do not open Docker integration PRs.

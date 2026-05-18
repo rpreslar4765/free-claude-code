@@ -1,3 +1,8 @@
+# Branch protection: require every status check this workflow reports, for example:
+#   Ban type ignore suppressions
+#   ruff-format, ruff-check, ty, pytest
+# GitHub may prefix with the workflow name (e.g. "CI / ruff-format"); use the names the branch protection UI offers after a run.
+
 name: CI
 
 on:
@@ -11,7 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
+  no-type-ignore-suppressions:
+    name: Ban type ignore suppressions
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -31,6 +37,31 @@ jobs:
           fi
           exit 0
 
+  quality:
+    name: ${{ matrix.id }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: ruff-format
+            run: uv run ruff format --check
+          - id: ruff-check
+            run: uv run ruff check
+          - id: ty
+            run: uv run ty check
+          - id: pytest
+            run: uv run pytest -v --tb=short
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          fetch-depth: 1
+
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
@@ -38,14 +69,5 @@ jobs:
           enable-cache: true
           cache-python: true
 
-      - name: Format check
-        run: uv run ruff format --check
-
-      - name: Style check
-        run: uv run ruff check
-
-      - name: Type check
-        run: uv run ty check
-
-      - name: Run tests
-        run: uv run pytest -v --tb=short
+      - name: Run
+        run: ${{ matrix.run }}

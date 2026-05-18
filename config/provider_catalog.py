@@ -19,10 +19,13 @@ WAFER_DEFAULT_BASE = "https://pass.wafer.ai/v1"
 DEEPSEEK_ANTHROPIC_DEFAULT_BASE = "https://api.deepseek.com/anthropic"
 # Historical export name: DeepSeek upstream is the native Anthropic path above.
 DEEPSEEK_DEFAULT_BASE = DEEPSEEK_ANTHROPIC_DEFAULT_BASE
+FIREWORKS_DEFAULT_BASE = "https://api.fireworks.ai/inference/v1"
 OPENROUTER_DEFAULT_BASE = "https://openrouter.ai/api/v1"
 LMSTUDIO_DEFAULT_BASE = "http://localhost:1234/v1"
 LLAMACPP_DEFAULT_BASE = "http://localhost:8080/v1"
 OLLAMA_DEFAULT_BASE = "http://localhost:11434"
+OPENCODE_DEFAULT_BASE = "https://opencode.ai/zen/v1"
+ZAI_DEFAULT_BASE = "https://api.z.ai/api/coding/paas/v4"
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +126,35 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         default_base_url=WAFER_DEFAULT_BASE,
         proxy_attr="wafer_proxy",
         capabilities=("chat", "streaming", "tools", "thinking", "native_anthropic"),
+    ),
+    "opencode": ProviderDescriptor(
+        provider_id="opencode",
+        transport_type="openai_chat",
+        credential_env="OPENCODE_API_KEY",
+        credential_url="https://opencode.ai/auth",
+        credential_attr="opencode_api_key",
+        default_base_url=OPENCODE_DEFAULT_BASE,
+        proxy_attr="opencode_proxy",
+        capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
+    ),
+    "zai": ProviderDescriptor(
+        provider_id="zai",
+        transport_type="openai_chat",
+        credential_env="ZAI_API_KEY",
+        credential_attr="zai_api_key",
+        default_base_url=ZAI_DEFAULT_BASE,
+        proxy_attr="zai_proxy",
+        capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
+    ),
+    "fireworks": ProviderDescriptor(
+        provider_id="fireworks",
+        transport_type="openai_chat",
+        credential_env="FIREWORKS_API_KEY",
+        credential_url="https://fireworks.ai/account/api-keys",
+        credential_attr="fireworks_api_key",
+        default_base_url=FIREWORKS_DEFAULT_BASE,
+        proxy_attr="fireworks_proxy",
+        capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
     ),
 }
 
