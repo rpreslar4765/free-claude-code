@@ -156,6 +156,16 @@ PROVIDER_CATALOG: dict[str, ProviderDescriptor] = {
         proxy_attr="fireworks_proxy",
         capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
     ),
+    "google": ProviderDescriptor(
+        provider_id="google",
+        transport_type="openai_chat",
+        credential_env="GOOGLE_API_KEY",
+        credential_url="https://aistudio.google.com/app/apikey",
+        credential_attr="google_api_key",
+        default_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        proxy_attr="google_proxy",
+        capabilities=("chat", "streaming", "tools", "thinking", "rate_limit"),
+    ),
 }
 
 # Order matches docs / historical error text; must match PROVIDER_CATALOG keys.
