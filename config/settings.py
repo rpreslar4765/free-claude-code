@@ -13,7 +13,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .constants import HTTP_CONNECT_TIMEOUT_DEFAULT
 from .nim import NimSettings
-from .paths import default_claude_workspace_path, managed_env_path
+from .paths import (
+    default_claude_workspace_path,
+    managed_env_path,
+)
+from .paths import (
+    local_first_training_data_path as default_local_first_training_data_path,
+)
 from .provider_ids import SUPPORTED_PROVIDER_IDS
 
 
@@ -174,6 +180,24 @@ class Settings(BaseSettings):
     model_opus: str | None = Field(default=None, validation_alias="MODEL_OPUS")
     model_sonnet: str | None = Field(default=None, validation_alias="MODEL_SONNET")
     model_haiku: str | None = Field(default=None, validation_alias="MODEL_HAIKU")
+
+    # ==================== Local-First Routing ====================
+    # Off by default: try a local model before the configured provider, only
+    # falling back when the local model's answer looks empty/erroring/refusing.
+    local_first_enabled: bool = Field(
+        default=False, validation_alias="LOCAL_FIRST_ENABLED"
+    )
+    # Format: provider_type/model/name (same convention as MODEL).
+    local_first_model: str = Field(
+        default="ollama/qwen3-coder:latest", validation_alias="LOCAL_FIRST_MODEL"
+    )
+    local_first_log_training_data: bool = Field(
+        default=False, validation_alias="LOCAL_FIRST_LOG_TRAINING_DATA"
+    )
+    local_first_training_data_path: str = Field(
+        default_factory=lambda: str(default_local_first_training_data_path()),
+        validation_alias="LOCAL_FIRST_TRAINING_DATA_PATH",
+    )
 
     # ==================== Per-Provider Proxy ====================
     nvidia_nim_proxy: str = Field(default="", validation_alias="NVIDIA_NIM_PROXY")
@@ -417,7 +441,9 @@ class Settings(BaseSettings):
             )
         return v
 
-    @field_validator("model", "model_opus", "model_sonnet", "model_haiku")
+    @field_validator(
+        "model", "model_opus", "model_sonnet", "model_haiku", "local_first_model"
+    )
     @classmethod
     def validate_model_format(cls, v: str | None) -> str | None:
         if v is None:

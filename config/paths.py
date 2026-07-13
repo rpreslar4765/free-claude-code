@@ -9,6 +9,7 @@ LEGACY_XDG_CONFIG_DIRNAME = ".config"
 CLAUDE_WORKSPACE_DIRNAME = "agent_workspace"
 FCC_LOGS_DIRNAME = "logs"
 SERVER_LOG_FILENAME = "server.log"
+LOCAL_FIRST_TRAINING_DATA_FILENAME = "local_first_training_data.jsonl"
 
 
 def config_dir_path() -> Path:
@@ -43,3 +44,9 @@ def server_log_path() -> Path:
     """Return the canonical server log path."""
 
     return config_dir_path() / FCC_LOGS_DIRNAME / SERVER_LOG_FILENAME
+
+
+def local_first_training_data_path() -> Path:
+    """Return the canonical local-first training-data log path."""
+
+    return config_dir_path() / FCC_LOGS_DIRNAME / LOCAL_FIRST_TRAINING_DATA_FILENAME
