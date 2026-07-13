@@ -1,0 +1,21 @@
+{
+  "trees": {
+    "r1": {
+      "root_id": "r1",
+      "nodes": {
+        "r1": {}
+      }
+    },
+    "r2": {
+      "root_id": "r2",
+      "nodes": {
+        "r2": {}
+      }
+    }
+  },
+  "node_to_tree": {
+    "r1": "r1",
+    "r2": "r2"
+  },
+  "message_log": {}
+}

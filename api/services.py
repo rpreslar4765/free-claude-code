@@ -17,7 +17,7 @@ from core.anthropic.sse import ANTHROPIC_SSE_RESPONSE_HEADERS
 from core.trace import api_messages_request_snapshot, trace_event, traced_async_stream
 from providers.base import BaseProvider
 from providers.exceptions import InvalidRequestError, ProviderError
-from providers.local_first import LocalFirstProvider
+from providers.registry import wrap_local_first
 
 from .model_router import ModelRouter
 from .models.anthropic import MessagesRequest, TokenCountRequest
@@ -156,7 +156,7 @@ class ClaudeProxyService:
                     self._settings.local_first_model
                 )
                 if local_provider_id != routed.resolved.provider_id:
-                    provider = LocalFirstProvider(
+                    provider = wrap_local_first(
                         local=self._provider_getter(local_provider_id),
                         local_model=Settings.parse_model_name(
                             self._settings.local_first_model

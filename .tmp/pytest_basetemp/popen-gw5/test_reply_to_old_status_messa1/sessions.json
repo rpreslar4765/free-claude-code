@@ -1,0 +1,77 @@
+{
+  "trees": {
+    "A": {
+      "root_id": "A",
+      "nodes": {
+        "A": {
+          "node_id": "A",
+          "incoming": {
+            "text": "A",
+            "chat_id": "chat_1",
+            "user_id": "user_1",
+            "message_id": "A",
+            "platform": "telegram",
+            "reply_to_message_id": null,
+            "message_thread_id": null,
+            "username": null
+          },
+          "status_message_id": "status_A",
+          "state": "pending",
+          "parent_id": null,
+          "session_id": null,
+          "children_ids": [],
+          "created_at": "2026-07-13T19:40:52.246549+00:00",
+          "completed_at": null,
+          "error_message": null
+        }
+      }
+    },
+    "R1": {
+      "root_id": "R1",
+      "nodes": {
+        "R1": {
+          "node_id": "R1",
+          "incoming": {
+            "text": "R1",
+            "chat_id": "chat_1",
+            "user_id": "user_1",
+            "message_id": "R1",
+            "platform": "telegram",
+            "reply_to_message_id": "status_A",
+            "message_thread_id": null,
+            "username": null
+          },
+          "status_message_id": "status_reply",
+          "state": "pending",
+          "parent_id": null,
+          "session_id": null,
+          "children_ids": [],
+          "created_at": "2026-07-13T19:40:52.273068+00:00",
+          "completed_at": null,
+          "error_message": null
+        }
+      }
+    }
+  },
+  "node_to_tree": {
+    "A": "A",
+    "R1": "R1",
+    "status_reply": "R1"
+  },
+  "message_log": {
+    "telegram:chat_1": [
+      {
+        "message_id": "R1",
+        "ts": "2026-07-13T19:40:52.272538+00:00",
+        "direction": "in",
+        "kind": "content"
+      },
+      {
+        "message_id": "status_reply",
+        "ts": "2026-07-13T19:40:52.272856+00:00",
+        "direction": "out",
+        "kind": "status"
+      }
+    ]
+  }
+}

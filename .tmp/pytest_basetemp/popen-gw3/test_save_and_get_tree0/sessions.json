@@ -1,0 +1,18 @@
+{
+  "trees": {
+    "root_1": {
+      "root_id": "root_1",
+      "nodes": {
+        "root_1": {
+          "node_id": "root_1",
+          "state": "completed",
+          "session_id": "sess_abc"
+        }
+      }
+    }
+  },
+  "node_to_tree": {
+    "root_1": "root_1"
+  },
+  "message_log": {}
+}

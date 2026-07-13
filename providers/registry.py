@@ -180,6 +180,21 @@ def build_provider_config(
     )
 
 
+def wrap_local_first(
+    *,
+    local: BaseProvider,
+    local_model: str,
+    fallback: BaseProvider,
+    settings: Settings,
+) -> BaseProvider:
+    """Wrap ``fallback`` so a local model is tried first (see ``providers.local_first``)."""
+    from providers.local_first import LocalFirstProvider
+
+    return LocalFirstProvider(
+        local=local, local_model=local_model, fallback=fallback, settings=settings
+    )
+
+
 def create_provider(provider_id: str, settings: Settings) -> BaseProvider:
     descriptor = PROVIDER_DESCRIPTORS.get(provider_id)
     if descriptor is None:

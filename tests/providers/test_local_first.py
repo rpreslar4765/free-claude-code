@@ -70,13 +70,16 @@ def request_data():
 
 
 @pytest.fixture
-def settings(tmp_path):
-    return Settings(
-        local_first_enabled=True,
-        local_first_model="ollama/qwen3-coder:latest",
-        local_first_log_training_data=False,
-        local_first_training_data_path=str(tmp_path / "training.jsonl"),
+def settings(tmp_path, monkeypatch):
+    # Aliased Settings fields only accept their env var name (not the Python
+    # attribute name) unless populate_by_name is set, so override via env like the
+    # rest of the test suite (see tests/config/test_config.py).
+    monkeypatch.setitem(Settings.model_config, "env_file", ())
+    monkeypatch.setenv("LOCAL_FIRST_LOG_TRAINING_DATA", "false")
+    monkeypatch.setenv(
+        "LOCAL_FIRST_TRAINING_DATA_PATH", str(tmp_path / "training.jsonl")
     )
+    return Settings()
 
 
 @pytest.mark.asyncio
@@ -167,15 +170,13 @@ async def test_embedded_provider_error_text_triggers_fallback(request_data, sett
 
 
 @pytest.mark.asyncio
-async def test_training_data_logged_when_enabled(request_data, tmp_path):
+async def test_training_data_logged_when_enabled(request_data, tmp_path, monkeypatch):
     """Accept/reject decisions are appended as JSON lines when logging is enabled."""
     log_path = tmp_path / "training.jsonl"
-    settings = Settings(
-        local_first_enabled=True,
-        local_first_model="ollama/qwen3-coder:latest",
-        local_first_log_training_data=True,
-        local_first_training_data_path=str(log_path),
-    )
+    monkeypatch.setitem(Settings.model_config, "env_file", ())
+    monkeypatch.setenv("LOCAL_FIRST_LOG_TRAINING_DATA", "true")
+    monkeypatch.setenv("LOCAL_FIRST_TRAINING_DATA_PATH", str(log_path))
+    settings = Settings()
     local = FakeProvider([sse_text_event("The answer is 4.")])
     fallback = FakeProvider([])
 

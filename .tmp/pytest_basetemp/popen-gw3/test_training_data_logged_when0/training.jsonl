@@ -1,0 +1,1 @@
+{"request_id": "REQ1", "timestamp": 1783971653.175168, "system": "be helpful", "messages": [{"role": "user", "content": "What is 2+2?"}], "local_model": "qwen3-coder:latest", "local_response": "The answer is 4.", "accepted": true}
