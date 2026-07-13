@@ -89,6 +89,10 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });
+  if (response.status === 401) {
+    showLoginOverlay(true);
+    throw new Error("Admin login required");
+  }
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);
   }
@@ -487,9 +491,49 @@ function showMessage(message, kind = "") {
   area.className = `message-area ${kind}`.trim();
 }
 
+function showLoginOverlay(configured) {
+  byId("loginHint").textContent = configured
+    ? "Enter the admin password to continue."
+    : "No admin password is configured yet. Set the API/CLI Auth Token field below, " +
+      "apply it, then log in here with that same value.";
+  byId("loginOverlay").hidden = false;
+  byId("loginPassword").focus();
+}
+
+async function checkSessionAndLoad() {
+  const session = await api("/admin/api/session");
+  if (!session.authenticated) {
+    showLoginOverlay(session.configured);
+    return;
+  }
+  await load();
+}
+
+byId("loginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const passwordInput = byId("loginPassword");
+  byId("loginError").textContent = "";
+  try {
+    await api("/admin/api/login", {
+      method: "POST",
+      body: JSON.stringify({ password: passwordInput.value }),
+    });
+    byId("loginOverlay").hidden = true;
+    passwordInput.value = "";
+    await load();
+  } catch (error) {
+    byId("loginError").textContent = "Incorrect password";
+  }
+});
+
+byId("logoutButton").addEventListener("click", async () => {
+  await api("/admin/api/logout", { method: "POST", body: "{}" });
+  window.location.reload();
+});
+
 byId("validateButton").addEventListener("click", () => validate(true));
 byId("applyButton").addEventListener("click", apply);
 
-load().catch((error) => {
+checkSessionAndLoad().catch((error) => {
   showMessage(error.message, "error");
 });

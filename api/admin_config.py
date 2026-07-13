@@ -1,4 +1,5 @@
 """Admin UI configuration manifest and managed env persistence."""
+# pylyzer: ignore
 
 from __future__ import annotations
 
@@ -35,6 +36,7 @@ SourceType = Literal[
 ]
 
 MASKED_SECRET = "********"
+_INHERITS_THINKING = "Blank inherits Enable Thinking."
 
 
 @dataclass(frozen=True, slots=True)
@@ -312,7 +314,7 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         "thinking",
         "tri_boolean",
         settings_attr="enable_opus_thinking",
-        description="Blank inherits Enable Thinking.",
+        description=_INHERITS_THINKING,
     ),
     ConfigFieldSpec(
         "ENABLE_SONNET_THINKING",
@@ -320,7 +322,7 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         "thinking",
         "tri_boolean",
         settings_attr="enable_sonnet_thinking",
-        description="Blank inherits Enable Thinking.",
+        description=_INHERITS_THINKING,
     ),
     ConfigFieldSpec(
         "ENABLE_HAIKU_THINKING",
@@ -328,7 +330,7 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         "thinking",
         "tri_boolean",
         settings_attr="enable_haiku_thinking",
-        description="Blank inherits Enable Thinking.",
+        description=_INHERITS_THINKING,
     ),
     ConfigFieldSpec(
         "ANTHROPIC_AUTH_TOKEN",
@@ -338,7 +340,7 @@ FIELDS: tuple[ConfigFieldSpec, ...] = (
         settings_attr="anthropic_auth_token",
         default="freecc",
         secret=True,
-        description="Protects Claude/API access. It is not admin-page login.",
+        description="Protects Claude/API access. Also doubles as the admin-page login password.",
     ),
     ConfigFieldSpec(
         "PROVIDER_RATE_LIMIT",
@@ -1065,6 +1067,42 @@ def render_env_file(values: Mapping[str, str], *, mask_secrets: bool = False) ->
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _local_provider_status(
+    provider_id: str,
+    descriptor: Any,
+    state: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Build status dict for local provider."""
+    base_url = ""
+    if descriptor.base_url_attr is not None:
+        base_url = _value_for_settings_attr(state, descriptor.base_url_attr)
+    is_missing = not base_url.strip()
+    return {
+        "provider_id": provider_id,
+        "kind": "local",
+        "status": "missing_url" if is_missing else "unknown",
+        "label": "Missing URL" if is_missing else "Not checked",
+        "base_url": base_url or descriptor.default_base_url or "",
+    }
+
+
+def _remote_provider_status(
+    provider_id: str,
+    descriptor: Any,
+    state: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Build status dict for remote provider."""
+    value = str(state.get(descriptor.credential_env, {}).get("value", ""))
+    configured = bool(value.strip())
+    return {
+        "provider_id": provider_id,
+        "kind": "remote",
+        "status": "configured" if configured else "missing_key",
+        "label": "Configured" if configured else "Missing key",
+        "credential_env": descriptor.credential_env,
+    }
+
+
 def provider_config_status(
     state: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
@@ -1074,31 +1112,9 @@ def provider_config_status(
     statuses: list[dict[str, Any]] = []
     for provider_id, descriptor in PROVIDER_CATALOG.items():
         if descriptor.credential_env is None:
-            base_url = ""
-            if descriptor.base_url_attr is not None:
-                base_url = _value_for_settings_attr(state, descriptor.base_url_attr)
-            statuses.append(
-                {
-                    "provider_id": provider_id,
-                    "kind": "local",
-                    "status": "missing_url" if not base_url.strip() else "unknown",
-                    "label": "Missing URL" if not base_url.strip() else "Not checked",
-                    "base_url": base_url or descriptor.default_base_url or "",
-                }
-            )
-            continue
-
-        value = str(state.get(descriptor.credential_env, {}).get("value", ""))
-        configured = bool(value.strip())
-        statuses.append(
-            {
-                "provider_id": provider_id,
-                "kind": "remote",
-                "status": "configured" if configured else "missing_key",
-                "label": "Configured" if configured else "Missing key",
-                "credential_env": descriptor.credential_env,
-            }
-        )
+            statuses.append(_local_provider_status(provider_id, descriptor, state))
+        else:
+            statuses.append(_remote_provider_status(provider_id, descriptor, state))
     return statuses
 
 
@@ -1107,7 +1123,8 @@ def _value_for_settings_attr(
 ) -> str:
     for field in FIELDS:
         if field.settings_attr == settings_attr:
-            return str(state.get(field.key, {}).get("value", field.default))
+            entry: Mapping[str, Any] = state.get(field.key) or {}
+            return str(entry.get("value", field.default))
     return ""
 
 
@@ -1121,3 +1138,4 @@ def fields_with_attrs() -> Iterable[ConfigFieldSpec]:
     """Yield fields that validate through Settings."""
 
     return (field for field in FIELDS if field.settings_attr is not None)
+

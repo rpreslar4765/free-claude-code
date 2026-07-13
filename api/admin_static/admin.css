@@ -421,6 +421,66 @@ textarea {
   gap: 8px;
 }
 
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 16, 14, 0.86);
+  backdrop-filter: blur(6px);
+}
+
+.login-card {
+  display: grid;
+  gap: 12px;
+  width: min(340px, calc(100vw - 48px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.login-card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.login-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.login-card label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.login-card input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--input);
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+.login-error {
+  margin: 0;
+  min-height: 16px;
+  color: var(--error);
+  font-size: 12px;
+}
+
+.logout-button {
+  width: 100%;
+  margin-top: 8px;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     display: block;

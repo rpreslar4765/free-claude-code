@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import inspect
 import ipaddress
+import secrets
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -17,6 +18,12 @@ from config.settings import Settings
 from config.settings import get_settings as get_cached_settings
 from providers.registry import ProviderRegistry
 
+from .admin_auth import (
+    SESSION_COOKIE_NAME,
+    clear_session_cookie,
+    set_session_cookie,
+    verify_session_value,
+)
 from .admin_config import (
     FIELD_BY_KEY,
     load_config_response,
@@ -40,6 +47,12 @@ class AdminConfigPayload(BaseModel):
     """Partial config update submitted by the admin UI."""
 
     values: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdminLoginPayload(BaseModel):
+    """Admin login submission."""
+
+    password: str
 
 
 def _is_loopback_host(host: str | None) -> bool:
@@ -73,6 +86,25 @@ def require_loopback_admin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Admin UI is local-only")
 
 
+def require_admin_session(request: Request) -> None:
+    """Require loopback access, and a valid login session once a password is set.
+
+    ``ANTHROPIC_AUTH_TOKEN`` doubles as the admin login password. While it is
+    unset, the admin UI stays freely accessible from loopback (matching prior
+    behavior); once it is configured, every admin data/action route requires a
+    signed session cookie obtained via ``POST /admin/api/login``.
+    """
+
+    require_loopback_admin(request)
+    token = get_cached_settings().anthropic_auth_token
+    if not token:
+        return
+
+    cookie = request.cookies.get(SESSION_COOKIE_NAME)
+    if not cookie or not verify_session_value(cookie, token):
+        raise HTTPException(status_code=401, detail="Admin login required")
+
+
 def _asset_response(filename: str) -> FileResponse:
     path = STATIC_DIR / filename
     if not path.is_file():
@@ -94,15 +126,50 @@ async def admin_asset(filename: str, request: Request):
     return _asset_response(filename)
 
 
+@router.get("/admin/api/session")
+async def admin_session(request: Request):
+    require_loopback_admin(request)
+    token = get_cached_settings().anthropic_auth_token
+    configured = bool(token)
+    cookie = request.cookies.get(SESSION_COOKIE_NAME)
+    authenticated = not configured or bool(
+        cookie and verify_session_value(cookie, token)
+    )
+    return {"authenticated": authenticated, "configured": configured}
+
+
+@router.post("/admin/api/login")
+async def admin_login(payload: AdminLoginPayload, request: Request, response: Response):
+    require_loopback_admin(request)
+    token = get_cached_settings().anthropic_auth_token
+    if not token:
+        raise HTTPException(
+            status_code=409, detail="No admin password is configured yet"
+        )
+    if not secrets.compare_digest(
+        payload.password.encode("utf-8"), token.encode("utf-8")
+    ):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+    set_session_cookie(response, token)
+    return {"authenticated": True}
+
+
+@router.post("/admin/api/logout")
+async def admin_logout(request: Request, response: Response):
+    require_loopback_admin(request)
+    clear_session_cookie(response)
+    return {"authenticated": False}
+
+
 @router.get("/admin/api/config")
 async def get_admin_config(request: Request):
-    require_loopback_admin(request)
+    require_admin_session(request)
     return load_config_response()
 
 
 @router.post("/admin/api/config/validate")
 async def validate_admin_config(payload: AdminConfigPayload, request: Request):
-    require_loopback_admin(request)
+    require_admin_session(request)
     return validate_updates(_filtered_values(payload.values))
 
 
@@ -112,7 +179,7 @@ async def apply_admin_config(
     request: Request,
     background_tasks: BackgroundTasks,
 ):
-    require_loopback_admin(request)
+    require_admin_session(request)
     result = write_managed_env(_filtered_values(payload.values))
     if not result["applied"]:
         return result
@@ -136,7 +203,7 @@ async def apply_admin_config(
 
 @router.get("/admin/api/status")
 async def admin_status(request: Request):
-    require_loopback_admin(request)
+    require_admin_session(request)
     settings = get_cached_settings()
     registry = getattr(request.app.state, "provider_registry", None)
     cached_models: dict[str, list[str]] = {}
@@ -159,7 +226,7 @@ async def admin_status(request: Request):
 
 @router.get("/admin/api/providers/local-status")
 async def local_provider_status(request: Request):
-    require_loopback_admin(request)
+    require_admin_session(request)
     config = load_config_response()
     values = {field["key"]: field["value"] for field in config["fields"]}
     checks = []
@@ -171,7 +238,7 @@ async def local_provider_status(request: Request):
 
 @router.post("/admin/api/providers/{provider_id}/test")
 async def test_provider(provider_id: str, request: Request):
-    require_loopback_admin(request)
+    require_admin_session(request)
     settings = get_cached_settings()
     registry = getattr(request.app.state, "provider_registry", None)
     if not isinstance(registry, ProviderRegistry):
@@ -196,7 +263,7 @@ async def test_provider(provider_id: str, request: Request):
 
 @router.post("/admin/api/models/refresh")
 async def refresh_models(request: Request):
-    require_loopback_admin(request)
+    require_admin_session(request)
     settings = get_cached_settings()
     registry = getattr(request.app.state, "provider_registry", None)
     if not isinstance(registry, ProviderRegistry):

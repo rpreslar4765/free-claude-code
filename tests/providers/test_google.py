@@ -78,7 +78,9 @@ def test_init(google_config):
 
 def test_base_url_constant():
     """GOOGLE_DEFAULT_BASE points to the Google Gemini OpenAI endpoint."""
-    assert GOOGLE_DEFAULT_BASE == "https://generativelanguage.googleapis.com/v1beta/openai"
+    assert (
+        GOOGLE_DEFAULT_BASE == "https://generativelanguage.googleapis.com/v1beta/openai"
+    )
 
 
 def test_build_request_body_basic(google_provider):
