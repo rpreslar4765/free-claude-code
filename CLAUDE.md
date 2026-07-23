@@ -30,16 +30,21 @@ configured upstream provider, and preserves the caller's wire protocol.
 Full details, request-flow diagrams, and dependency rules: [ARCHITECTURE.md](ARCHITECTURE.md).
 User-facing installation/provider setup: [README.md](README.md).
 
+Request flow (see [ARCHITECTURE.md](ARCHITECTURE.md) for the full diagram): client
+(Claude Code / Codex / Pi) → `api` FastAPI routes → `api/handlers` → `application`
+`ModelRouter` (resolve model) → `application` `ProviderExecutor` (run request) →
+`runtime` `ProviderGenerationLease` → `providers` adapter → upstream API.
+
 Top-level packages under `src/free_claude_code/`:
 
-- `application/` — dependency-leaf boundary: `ModelRouter`, `ProviderExecutor`, `ProviderPort`, request-runtime lease ports, task control, deterministic errors (`errors.py`, `routing.py`, `execution.py`, `ports.py`, `model_metadata.py`, `reasoning.py`).
-- `api/` — FastAPI HTTP adapter: app/routes (`app.py`, `routes.py`), product handlers (`handlers/messages.py`, `handlers/responses.py`, `handlers/token_count.py`), admin routes/cache, model catalog, web tool subpackage (`web_tools/`).
-- `cli/` — console entrypoints and client launchers: `entrypoints.py`, `commands.py`, `launchers/{claude,codex,pi}.py`, managed session subpackage (`managed/`), desktop tray/app.
-- `config/` — settings, provider metadata/catalog, paths, logging, constants, env migrations; admin config subpackage (`admin/`).
-- `core/` — provider-neutral protocol logic: Anthropic conversion/streaming (`anthropic/`), OpenAI Responses conversion (`openai_responses/`), canonical failure semantics (`failures.py`), token counting (`anthropic/tokens.py`). This layer is SDK-free and never classifies provider SDK/HTTP exceptions.
+- `application/` — dependency-leaf boundary: `ModelRouter` (`routing.py`), `ProviderExecutor` (`execution.py`), `ProviderPort`/`RequestRuntimePort`/`TaskController` protocols (`ports.py`), deterministic errors (`errors.py`), model metadata (`model_metadata.py`), reasoning intent resolution (`reasoning.py`).
+- `api/` — FastAPI HTTP adapter: app factory `create_app()` (`app.py`), routes (`routes.py`), product handlers (`handlers/messages.py`, `handlers/responses.py`, `handlers/token_count.py`), admin routes/cache, model catalog, web tool subpackage (`web_tools/`).
+- `cli/` — console entrypoints and client launchers: `serve()` entrypoint (`entrypoints.py`), `commands.py`, `launchers/{claude,codex,pi}.py`, managed session subpackage (`managed/`), desktop tray/app.
+- `config/` — `Settings`/`get_settings()` (`settings.py`), provider metadata/catalog, paths, logging, constants, env migrations; admin config subpackage (`admin/`).
+- `core/` — provider-neutral protocol logic: Anthropic conversion/streaming (`anthropic/`), OpenAI Responses conversion (`openai_responses/`), canonical failure semantics — `FailureKind`, `ExecutionFailure` (`failures.py`), token counting (`anthropic/tokens.py`). This layer is SDK-free and never classifies provider SDK/HTTP exceptions.
 - `messaging/` — optional Discord/Telegram bridge: platforms, incoming message handling, tree queues, transcript rendering, persistence, commands, voice (`platforms/`, `rendering/`, `session/`, `transcript/`, `trees/`).
-- `providers/` — provider construction, shared OpenAI-chat base (`openai_chat/`), SDK/HTTP failure classification, retries, rate limiting, model listing, and concrete adapters per provider (`cloudflare/`, `deepseek/`, `gemini/`, `github_models/`, `google_openai/`, `lmstudio/`, `mistral/`, `nvidia_nim/`, `open_router/`, `vertex/`), plus shared `runtime/` (discovery, factory, model cache).
-- `runtime/` — process composition root: startup/shutdown (`application.py`, `asgi.py`, `bootstrap.py`), provider generation wiring (`provider_manager.py`).
+- `providers/` — provider construction, shared OpenAI-chat base (`openai_chat/`), SDK/HTTP failure classification, retries, rate limiting, model listing, and concrete adapters per provider (`cloudflare/`, `deepseek/`, `gemini/`, `github_models/`, `google_openai/`, `lmstudio/`, `mistral/`, `nvidia_nim/`, `open_router/`, `vertex/`), plus shared `runtime/` — `create_provider()` factory (`runtime/factory.py`), `ProviderRuntime` (`runtime/runtime.py`), discovery, model cache.
+- `runtime/` — process composition root: `ApplicationRuntime` startup/shutdown (`application.py`), `RuntimeASGIApp` (`asgi.py`), `build_asgi_app()` (`bootstrap.py`), `ProviderGenerationLease`/`ProviderRuntimeManager` (`provider_manager.py`).
 
 Tests mirror this layout under `tests/` (`tests/api`, `tests/application`, `tests/cli`, `tests/config`, `tests/contracts`, `tests/core`, `tests/messaging`, `tests/providers`, `tests/runtime`, `tests/scripts`). `smoke/` holds local/live product smoke tests (`smoke/product`, `smoke/prereq`, `smoke/lib`) — see `smoke/README.md`.
 
