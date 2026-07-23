@@ -446,6 +446,8 @@ def test_launch_claude_passes_args_and_child_env(
     monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
     monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "old-token")
     monkeypatch.setenv("KEEP_ME", "yes")
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
     settings = _launcher_settings(port=9191, token="proxy-token")
 
     with (
@@ -501,6 +503,8 @@ def test_launch_codex_passes_responses_config_and_child_env(
     monkeypatch.setenv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "Codex Desktop")
     monkeypatch.setenv("CODEX_PERMISSION_PROFILE", "danger-full-access")
     monkeypatch.setenv("CODEX_SHELL", "1")
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
     monkeypatch.setenv("CODEX_THREAD_ID", "parent-thread")
     settings = _launcher_settings(port=9191, token="proxy-token")
     catalog_path = tmp_path / "codex-model-catalog.json"
@@ -698,6 +702,8 @@ def test_launch_pi_registers_bundled_extension_for_sessions(
 
     monkeypatch.setenv("KEEP_ME", "yes")
     monkeypatch.setenv("FCC_PI_API_KEY", "stale-key")
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
     extension = tmp_path / "pi_extension.ts"
     extension.write_text("export default () => {};", encoding="utf-8")
     settings = _launcher_settings(port=9191, token="proxy-token")
