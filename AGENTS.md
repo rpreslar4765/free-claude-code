@@ -28,7 +28,7 @@ Free Claude Code is a local proxy that accepts Anthropic Messages traffic
 (Claude Code, Pi) and OpenAI Responses traffic (Codex), routes it to a
 configured upstream provider, and preserves the caller's wire protocol.
 Full details, request-flow diagrams, and dependency rules: [ARCHITECTURE.md](ARCHITECTURE.md).
-User-facing install/provider setup: [README.md](README.md).
+User-facing installation/provider setup: [README.md](README.md).
 
 Top-level packages under `src/free_claude_code/`:
 
@@ -36,7 +36,7 @@ Top-level packages under `src/free_claude_code/`:
 - `api/` — FastAPI HTTP adapter: app/routes (`app.py`, `routes.py`), product handlers (`handlers/messages.py`, `handlers/responses.py`, `handlers/token_count.py`), admin routes/cache, model catalog, web tool subpackage (`web_tools/`).
 - `cli/` — console entrypoints and client launchers: `entrypoints.py`, `commands.py`, `launchers/{claude,codex,pi}.py`, managed session subpackage (`managed/`), desktop tray/app.
 - `config/` — settings, provider metadata/catalog, paths, logging, constants, env migrations; admin config subpackage (`admin/`).
-- `core/` — provider-neutral protocol logic: Anthropic conversion/streaming (`anthropic/`), OpenAI Responses conversion (`openai_responses/`), canonical failure semantics (`failures.py`), token counting (`anthropic/tokens.py`). SDK-free — never classifies provider SDK/HTTP exceptions.
+- `core/` — provider-neutral protocol logic: Anthropic conversion/streaming (`anthropic/`), OpenAI Responses conversion (`openai_responses/`), canonical failure semantics (`failures.py`), token counting (`anthropic/tokens.py`). This layer is SDK-free and never classifies provider SDK/HTTP exceptions.
 - `messaging/` — optional Discord/Telegram bridge: platforms, incoming message handling, tree queues, transcript rendering, persistence, commands, voice (`platforms/`, `rendering/`, `session/`, `transcript/`, `trees/`).
 - `providers/` — provider construction, shared OpenAI-chat base (`openai_chat/`), SDK/HTTP failure classification, retries, rate limiting, model listing, and concrete adapters per provider (`cloudflare/`, `deepseek/`, `gemini/`, `github_models/`, `google_openai/`, `lmstudio/`, `mistral/`, `nvidia_nim/`, `open_router/`, `vertex/`), plus shared `runtime/` (discovery, factory, model cache).
 - `runtime/` — process composition root: startup/shutdown (`application.py`, `asgi.py`, `bootstrap.py`), provider generation wiring (`provider_manager.py`).
