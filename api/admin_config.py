@@ -1138,4 +1138,3 @@ def fields_with_attrs() -> Iterable[ConfigFieldSpec]:
     """Yield fields that validate through Settings."""
 
     return (field for field in FIELDS if field.settings_attr is not None)
-
