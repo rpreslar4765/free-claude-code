@@ -423,7 +423,8 @@ function Install-Rtk {
             throw "RTK checksum verification failed for $RtkWindowsAssetName."
         }
 
-        Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $extractPath)
         $extractedExecutable = Join-Path $extractPath "rtk.exe"
         if (-not (Test-Path -LiteralPath $extractedExecutable -PathType Leaf)) {
             throw "The verified RTK archive did not contain rtk.exe."

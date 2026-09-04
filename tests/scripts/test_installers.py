@@ -2230,7 +2230,14 @@ if ($resolved -ne {str(fallback)!r}) {{
     )
 
     result = subprocess.run(
-        [powershell, "-NoProfile", "-File", str(script)],
+        [
+            powershell,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script),
+        ],
         check=False,
         capture_output=True,
         text=True,
