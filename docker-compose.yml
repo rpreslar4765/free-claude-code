@@ -1,0 +1,33 @@
+version: '3.9'
+
+services:
+  free-claude-code:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: free-claude-code
+    ports:
+      - "8082:8082"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8082
+      # Provider credentials: set these in .env (see .env.example) and they're picked up
+      # via the ./.env:/app/.env:ro mount below, e.g. NVIDIA_NIM_API_KEY, OPENROUTER_API_KEY,
+      # DEEPSEEK_API_KEY, KIMI_API_KEY, WAFER_API_KEY, OPENCODE_API_KEY, ZAI_API_KEY.
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  microservices:
+    driver: bridge

@@ -16,3 +16,5 @@ llama_cache
 .smoke-results
 .vscode
 server.*
+# Windows/OneDrive folder-view artifact
+desktop.ini
