@@ -36,8 +36,12 @@ def test_post_merge_serializes_and_limits_publish_permissions():
     assert publish["environment"] == "pypi"
     assert publish["permissions"] == {"contents": "write", "id-token": "write"}
     assert cache["permissions"] == {"contents": "read"}
+    assert cache["if"] == "github.ref == 'refs/heads/main'"
+    assert publish["if"] == (
+        "github.ref == 'refs/heads/main'"
+        " && github.repository == 'Alishahryar1/free-claude-code'"
+    )
     for job in (cache, publish):
-        assert job["if"] == "github.ref == 'refs/heads/main'"
         checkout = next(
             s for s in job["steps"] if s.get("uses", "").startswith("actions/checkout@")
         )

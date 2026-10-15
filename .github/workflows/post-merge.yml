@@ -81,7 +81,9 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    if: github.ref == 'refs/heads/main'
+    # PyPI trusted publishing and release history belong to the upstream project.
+    # Forks still run dependency-cache and pull-request validation jobs.
+    if: github.ref == 'refs/heads/main' && github.repository == 'Alishahryar1/free-claude-code'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: pypi
